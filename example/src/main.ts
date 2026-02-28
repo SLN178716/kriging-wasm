@@ -4,6 +4,7 @@ import kriging from '@sakitam-gis/kriging';
 import { colors, type releaseType } from './constant';
 import * as turf from '@turf/turf';
 import './main.css';
+import initKrigingWasm, { kriging_interpolate } from './kriging-wasm/kriging_wasm'
 
 
 const tdt_key = '36294b070b7f84a954582df42f1b6cb1'
@@ -60,6 +61,14 @@ const generateData = () => {
 
 const showKriging = (type: releaseType) => {
   if (type !== 'js') {
+    initKrigingWasm().then(() => {
+      kriging_interpolate({
+        points: [{
+          x: 110,
+          y: 32
+        }]
+      })
+    });
     return
   }
   // 清空图层
@@ -134,4 +143,4 @@ const showKriging = (type: releaseType) => {
 
 initMap()
 const { boundaries, positionData } = generateData()
-showKriging('js')
+showKriging('wasm')
