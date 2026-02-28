@@ -1,18 +1,35 @@
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 use tsify_next::Tsify;
+use oxigdal_analytics::interpolation::kriging;
+
+#[derive(Serialize, Deserialize, Debug, Clone, Tsify)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
+pub enum KrigingType {
+    Ordinary,
+    Universal,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Tsify)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
+pub enum VariogramModel {
+    Spherical,
+    Exponential,
+    Gaussian,
+    Linear,
+}
 
 // 输入数据结构
 #[derive(Serialize, Deserialize, Debug, Tsify)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 pub struct KrigingInput {
-    pub points: Vec<Point>,
-    pub values: Vec<f64>,
-    pub target_points: Vec<Point>,
-    pub model_type: String, // "spherical", "exponential", "gaussian"
+    pub kriging_type: KrigingType,
+    pub model_type: VariogramModel,
     pub nugget: Option<f64>,
     pub sill: Option<f64>,
     pub range: Option<f64>,
+    pub points: Vec<Point>,
+    pub target_points: Vec<Point>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Tsify)]
@@ -20,6 +37,7 @@ pub struct KrigingInput {
 pub struct Point {
     pub x: f64,
     pub y: f64,
+    pub value: f64,
 }
 
 // 输出数据结构
