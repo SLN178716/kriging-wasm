@@ -95,7 +95,7 @@ const showKriging = (type: releaseType) => {
     krigingModel: 'Exponential',//model还可选'gaussian','spherical'
     krigingSigma2: 0,
     krigingAlpha: 100,
-    interval: 0.05, // 插值格点精度大小
+    interval: 1, // 插值格点精度大小
     canvasAlpha: 0.8,//canvas图层透明度-0.75
     colors
   }
@@ -116,14 +116,19 @@ const showKriging = (type: releaseType) => {
     }
 
     // 对数据集进行训练
+    console.time('train');
     const variogram = kriging.train(t, x, y, params.krigingModel.toLowerCase(), params.krigingSigma2, params.krigingAlpha);
+    console.timeEnd('train');
     
     // 使用variogram对象使polygons描述的地理位置内的格网元素具备不一样的预测值,最后一个参数，是插值格点精度大小
+    console.time('grid');
     const grid = kriging.grid(range, variogram, params.interval);
+    console.timeEnd('grid');
     console.log(grid!.data.reduce((acc, cur) => {
       const val = cur.filter((v: unknown) => v !== null && v !== undefined).length
       return acc + val
     }, 0))
+    console.log(variogram)
     // 将得到的格网grid渲染至canvas上
     kriging.plot(canvas, grid!, grid!.xlim, grid!.ylim, params.colors);
     
@@ -136,13 +141,11 @@ const showKriging = (type: releaseType) => {
   function wasmKriging() {
     performance.mark('wasm start');
     const zlim = [positionData.features[0].properties.value, positionData.features[0].properties.value];
-    const { points, xlim, ylim } = interpolate_grid({ 
+    const grid = interpolate_grid({ 
       base: {
-        kriging_type: 'Ordinary',
         model_type: params.krigingModel as VariogramModel,
-        nugget: params.krigingSigma2,
-        range: params.krigingAlpha,
-        sill: null
+        sigma2: params.krigingSigma2,
+        alpha: params.krigingAlpha,
       },
       known_points: positionData.features.map(feature => {
         zlim[0] = Math.min(zlim[0], feature.properties.value);
@@ -155,22 +158,14 @@ const showKriging = (type: releaseType) => {
       polygons: range,
       interval: params.interval,
     })
-    const ctx = canvas.getContext('2d');
-    if (ctx) {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      const range = [xlim[1] - xlim[0], ylim[1] - ylim[0], zlim[1] - zlim[0]];
-      const wx = Math.ceil(params.interval * canvas.width / (xlim[1] - xlim[0]));
-      const wy = Math.ceil(params.interval * canvas.height / (ylim[1] - ylim[0]));
-      for (const point of points) {
-        const x = canvas.width * (point.point[0] - xlim[0]) / range[0];
-        const y = canvas.height * (1 - (point.point[1] - ylim[0]) / range[1]);
-        let z = (point.value - zlim[0]) / range[2];
-        if (z < 0.0) z = 0.0;
-        if (z > 1.0) z = 1.0;
-        ctx.fillStyle = colors[Math.floor((colors.length - 1) * z)];
-        ctx.fillRect(Math.round(x - wx / 2), Math.round(y - wy / 2), wx, wy);
-      }
-    }
+    console.log(grid!.data.reduce((acc, cur) => {
+      const val = cur.filter((v: unknown) => v !== null && v !== undefined).length
+      return acc + val
+    }, 0))
+    kriging.plot(canvas, {
+      ...grid!,
+      data: grid!.data as [][],
+    }, grid!.xlim, grid!.ylim, params.colors);
     const imageBounds: L.LatLngBoundsExpression = range[0].map(v => [v[1], v[0]]);;
     L.imageOverlay(canvas.toDataURL("image/png"), imageBounds, { opacity: 0.8 }).addTo(imageLayerGroup!);
     
