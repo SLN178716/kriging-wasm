@@ -1,10 +1,10 @@
 pub mod utils;
 
+use wasm_bindgen::prelude::*;
 use ndarray::{Array1, Array2, Axis};
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;
 use utils::*;
-use web_sys::console;
 
 // 变异函数模型
 #[derive(Debug, Clone, Serialize, Deserialize, Tsify)]
@@ -269,26 +269,25 @@ pub fn train(
 }
 // 预测函数
 pub fn predict(x: f64, y: f64, variogram: &Variogram) -> f64 {
-    let mut k = Array1::zeros(variogram.n);
-
-    for i in 0..variogram.n {
-        let dx = x - variogram.x[i];
-        let dy = y - variogram.y[i];
-        let func = variogram.model_func;
-        k[i] = func(
+    let n = variogram.n;
+    let xs = &variogram.x;
+    let ys = &variogram.y;
+    let ms = &variogram.m;
+    let func = variogram.model_func;
+    let mut acc = 0.0;
+    for i in 0..n {
+        let dx = x - xs[i];
+        let dy = y - ys[i];
+        let weight = func(
             (dx * dx + dy * dy).sqrt(),
             variogram.nugget,
             variogram.range,
             variogram.sill,
             variogram.a,
-        )
+        );
+        acc += weight * ms[i];
     }
-
-    let result = matrix_multiply(
-        &k.insert_axis(Axis(0)),
-        &variogram.m.clone().insert_axis(Axis(1)),
-    );
-    result[[0, 0]]
+    acc
 }
 
 // 方差函数
@@ -368,41 +367,42 @@ pub fn grid(
     // 计算多边形边界
     let mut xlim = (polygons[0][0].0, polygons[0][0].0);
     let mut ylim = (polygons[0][0].1, polygons[0][0].1);
+    let mut bounds = Vec::with_capacity(n);
 
     for polygon in polygons {
-        for point in polygon {
-            xlim.0 = xlim.0.min(point.0);
-            xlim.1 = xlim.1.max(point.0);
-            ylim.0 = ylim.0.min(point.1);
-            ylim.1 = ylim.1.max(point.1);
-        }
-    }
-
-    // 计算网格大小
-    let x = ((xlim.1 - xlim.0) / width).ceil() as usize;
-    let y = ((ylim.1 - ylim.0) / width).ceil() as usize;
-
-    // 初始化网格数据
-    let mut data = vec![vec![None; y + 1]; x + 1];
-
-    // 遍历每个多边形
-    for polygon in polygons {
-        // 计算当前多边形的边界
         let mut lxlim = (polygon[0].0, polygon[0].0);
         let mut lylim = (polygon[0].1, polygon[0].1);
-
         for point in polygon {
             lxlim.0 = lxlim.0.min(point.0);
             lxlim.1 = lxlim.1.max(point.0);
             lylim.0 = lylim.0.min(point.1);
             lylim.1 = lylim.1.max(point.1);
+            xlim.0 = xlim.0.min(point.0);
+            xlim.1 = xlim.1.max(point.0);
+            ylim.0 = ylim.0.min(point.1);
+            ylim.1 = ylim.1.max(point.1);
         }
+        bounds.push((lxlim.0, lxlim.1, lylim.0, lylim.1));
+    }
 
+    // 计算网格大小
+    let x0 = xlim.0;
+    let y0 = ylim.0;
+    let width_inv = 1.0 / width;
+    let x = ((xlim.1 - x0) * width_inv).ceil() as usize;
+    let y = ((ylim.1 - y0) * width_inv).ceil() as usize;
+
+    // 初始化网格数据
+    let mut data = vec![vec![None; y + 1]; x + 1];
+
+    // 遍历每个多边形
+    for (polygon, bounds) in polygons.iter().zip(bounds.iter()) {
+        let (lxmin, lxmax, lymin, lymax) = *bounds;
         // 计算网格范围
-        let a0 = ((lxlim.0 - ((lxlim.0 - xlim.0) % width)) - xlim.0) / width;
-        let a1 = ((lxlim.1 - ((lxlim.1 - xlim.1) % width)) - xlim.0) / width;
-        let b0 = ((lylim.0 - ((lylim.0 - ylim.0) % width)) - ylim.0) / width;
-        let b1 = ((lylim.1 - ((lylim.1 - ylim.1) % width)) - ylim.0) / width;
+        let a0 = (lxmin - ((lxmin - x0) % width) - x0) * width_inv;
+        let a1 = (lxmax - ((lxmax - xlim.1) % width) - x0) * width_inv;
+        let b0 = (lymin - ((lymin - y0) % width) - y0) * width_inv;
+        let b1 = (lymax - ((lymax - ylim.1) % width) - y0) * width_inv;
 
         let a0 = a0.floor() as usize;
         let a1 = a1.ceil() as usize;
@@ -411,18 +411,18 @@ pub fn grid(
 
         // 遍历网格点
         for j in a0..=a1 {
+            let xtarget = x0 + j as f64 * width;
+            let mut ytarget = y0 + b0 as f64 * width;
             for k in b0..=b1 {
-                let xtarget = xlim.0 + j as f64 * width;
-                let ytarget = ylim.0 + k as f64 * width;
-
                 if pip(polygon, xtarget, ytarget) {
                     let value = predict(xtarget, ytarget, variogram);
                     data[j][k] = Some(value);
                 }
+                ytarget += width;
             }
         }
     }
-
+    
     // 计算z轴范围
     let zlim = (min(&variogram.t), max(&variogram.t));
 

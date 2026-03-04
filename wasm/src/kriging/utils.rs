@@ -2,12 +2,13 @@ use ndarray::{Array1, Array2};
 
 // 变异函数计算
 pub fn variogram_gaussian(h: f64, nugget: f64, range: f64, sill: f64, a: f64) -> f64 {
-    nugget + ((sill - nugget) / range) * (1.0 - (- (1.0 / a) * (h / range).powi(2)).exp())
+    let r = h / range;
+    nugget + ((sill - nugget) / range) * (1.0 - ((- (1.0 / a) * r * r) as f32).exp() as f64)
 }
 
 // 变异函数计算
 pub fn variogram_exponential(h: f64, nugget: f64, range: f64, sill: f64, a: f64) -> f64 {
-    nugget + ((sill - nugget) / range) * (1.0 - (- (1.0 / a) * (h / range)).exp())
+    nugget + ((sill - nugget) / range) * (1.0 - ((- (1.0 / a) * (h / range)) as f32).exp() as f64)
 }
 
 // 变异函数计算
@@ -15,7 +16,8 @@ pub fn variogram_spherical(h: f64, nugget: f64, range: f64, sill: f64, _a: f64) 
     if h > range {
         return nugget + (sill - nugget) / range;
     }
-    nugget + ((sill - nugget) / range) * (1.5 * (h / range) - 0.5 * (h / range).powi(3))
+    let r = h / range;
+    nugget + ((sill - nugget) / range) * (1.5 * r - 0.5 * r * r * r)
 }
 
 // 辅助函数

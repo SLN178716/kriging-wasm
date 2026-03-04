@@ -3,6 +3,6 @@
   "version": "0.1.0",
   "scripts": {
     "start:example": "cd example && npm run dev",
-    "build:example": "wasm-pack build wasm --out-dir ../example/src/kriging-wasm --target web"
+    "build:example": "wasm-pack build wasm --release --out-dir ../example/src/kriging-wasm --target web"
   }
 }

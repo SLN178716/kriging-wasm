@@ -92,10 +92,10 @@ const showKriging = (type: releaseType) => {
   
   // 克里金插值参数
   const params = {
-    krigingModel: 'Exponential',//model还可选'gaussian','spherical'
+    krigingModel: 'Spherical',//model还可选'gaussian','spherical'
     krigingSigma2: 0,
     krigingAlpha: 100,
-    interval: 1, // 插值格点精度大小
+    interval: 0.01, // 插值格点精度大小
     canvasAlpha: 0.8,//canvas图层透明度-0.75
     colors
   }
