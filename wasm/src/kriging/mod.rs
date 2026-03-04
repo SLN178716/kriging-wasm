@@ -1,6 +1,5 @@
 pub mod utils;
 
-use wasm_bindgen::prelude::*;
 use ndarray::{Array1, Array2, Axis};
 use serde::{Deserialize, Serialize};
 use tsify_next::Tsify;

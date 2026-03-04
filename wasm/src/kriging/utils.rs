@@ -3,12 +3,12 @@ use ndarray::{Array1, Array2};
 // 变异函数计算
 pub fn variogram_gaussian(h: f64, nugget: f64, range: f64, sill: f64, a: f64) -> f64 {
     let r = h / range;
-    nugget + ((sill - nugget) / range) * (1.0 - ((- (1.0 / a) * r * r) as f32).exp() as f64)
+    nugget + ((sill - nugget) / range) * (1.0 - (- (1.0 / a) * r * r).exp())
 }
 
 // 变异函数计算
 pub fn variogram_exponential(h: f64, nugget: f64, range: f64, sill: f64, a: f64) -> f64 {
-    nugget + ((sill - nugget) / range) * (1.0 - ((- (1.0 / a) * (h / range)) as f32).exp() as f64)
+    nugget + ((sill - nugget) / range) * (1.0 - (- (1.0 / a) * (h / range)).exp())
 }
 
 // 变异函数计算

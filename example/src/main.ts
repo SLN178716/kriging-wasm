@@ -92,7 +92,7 @@ const showKriging = (type: releaseType) => {
   
   // 克里金插值参数
   const params = {
-    krigingModel: 'Spherical',//model还可选'gaussian','spherical'
+    krigingModel: 'Exponential',//model还可选'gaussian','spherical'
     krigingSigma2: 0,
     krigingAlpha: 100,
     interval: 0.01, // 插值格点精度大小
@@ -116,19 +116,10 @@ const showKriging = (type: releaseType) => {
     }
 
     // 对数据集进行训练
-    console.time('train');
     const variogram = kriging.train(t, x, y, params.krigingModel.toLowerCase(), params.krigingSigma2, params.krigingAlpha);
-    console.timeEnd('train');
     
     // 使用variogram对象使polygons描述的地理位置内的格网元素具备不一样的预测值,最后一个参数，是插值格点精度大小
-    console.time('grid');
     const grid = kriging.grid(range, variogram, params.interval);
-    console.timeEnd('grid');
-    console.log(grid!.data.reduce((acc, cur) => {
-      const val = cur.filter((v: unknown) => v !== null && v !== undefined).length
-      return acc + val
-    }, 0))
-    console.log(variogram)
     // 将得到的格网grid渲染至canvas上
     kriging.plot(canvas, grid!, grid!.xlim, grid!.ylim, params.colors);
     
@@ -158,10 +149,6 @@ const showKriging = (type: releaseType) => {
       polygons: range,
       interval: params.interval,
     })
-    console.log(grid!.data.reduce((acc, cur) => {
-      const val = cur.filter((v: unknown) => v !== null && v !== undefined).length
-      return acc + val
-    }, 0))
     kriging.plot(canvas, {
       ...grid!,
       data: grid!.data as [][],

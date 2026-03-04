@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 use tsify_next::Tsify;
-use web_sys::console;
 
 mod kriging;
 pub use kriging::{train, predict, grid, VariogramModel, GridResult};
@@ -99,13 +98,9 @@ pub fn interpolate_grid(
         y.push(p.point.1);
     }
     
-    console::time_with_label("train");
     let variogram = train(&t, &x, &y, option.base.model_type.clone(), option.base.sigma2, option.base.alpha);
-    console::time_end_with_label("train");
-    
-    console::time_with_label("grid");
+
     let result = grid(&option.polygons, &variogram, option.interval);
-    console::time_end_with_label("grid");
     Ok(result)
 }
 
